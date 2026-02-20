@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:id="@+id/deviceRow"
+    android:layout_width="match_parent"
+    android:layout_height="56dp"
+    android:layout_marginBottom="10dp"
+    android:gravity="center_vertical"
+    android:orientation="horizontal">
+
+    <com.google.android.material.button.MaterialButton
+        android:id="@+id/btnDevice"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:fontFamily="sans-serif-medium"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:text="CarryBot 1"
+        android:textAllCaps="false"
+        android:textColor="#002E3B"
+        android:textSize="18sp"
+        app:backgroundTint="#A8DEE8"
+        app:cornerRadius="18dp" />
+
+    <ImageButton
+        android:id="@+id/btnDelete"
+        android:layout_width="56dp"
+        android:layout_height="match_parent"
+        android:layout_marginStart="10dp"
+        android:background="@drawable/btn_neutral"
+        android:contentDescription="Supprimer"
+        android:padding="6dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_trash" />
+</LinearLayout>
