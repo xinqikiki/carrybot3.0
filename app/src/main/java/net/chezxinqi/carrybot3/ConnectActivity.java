@@ -14,8 +14,14 @@ import java.util.List;
 
 public class ConnectActivity extends AppCompatActivity {
 
-    private static final String BASE_PREFIX = "http://192.168.4."; // TODO: change to your Pi prefix
     private static final String EXTRA_PREVIEW = "preview";
+    private static final java.util.regex.Pattern IPV4_PATTERN =
+            java.util.regex.Pattern.compile(
+                    "^(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\."
+                            + "(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\."
+                            + "(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)\\."
+                            + "(25[0-5]|2[0-4]\\d|1\\d\\d|[1-9]?\\d)$"
+            );
 
     private MaterialButton btnConnect;
     private TextView txtConnectStatus;
@@ -48,13 +54,17 @@ public class ConnectActivity extends AppCompatActivity {
     }
 
     private void addDevice() {
-        String octet = edtPiOctet.getText().toString().trim();
-        if (octet.isEmpty()) {
+        String ipInput = edtPiOctet.getText().toString().trim();
+        if (ipInput.isEmpty()) {
             Toast.makeText(this, UiStrings.get(this, UiStrings.KEY_TOAST_ENTER_IP), Toast.LENGTH_SHORT).show();
             return;
         }
+        String baseUrl = buildBaseUrl(ipInput);
+        if (baseUrl == null) {
+            Toast.makeText(this, UiStrings.get(this, UiStrings.KEY_TOAST_INVALID_IP), Toast.LENGTH_SHORT).show();
+            return;
+        }
         TtsManager.speak(this, UiStrings.get(this, UiStrings.KEY_ADD));
-        String baseUrl = buildBaseUrl(octet);
         String name = DeviceStore.suggestName(this);
         boolean added = DeviceStore.addDevice(this, name, baseUrl);
         if (!added) {
@@ -66,10 +76,20 @@ public class ConnectActivity extends AppCompatActivity {
     }
 
     private String buildBaseUrl(String input) {
-        if (input.contains(".")) {
-            return "http://" + input;
+        String cleaned = input;
+        if (cleaned.startsWith("http://")) {
+            cleaned = cleaned.substring("http://".length());
+        } else if (cleaned.startsWith("https://")) {
+            cleaned = cleaned.substring("https://".length());
         }
-        return BASE_PREFIX + input;
+        int slash = cleaned.indexOf('/');
+        if (slash >= 0) {
+            cleaned = cleaned.substring(0, slash);
+        }
+        if (!IPV4_PATTERN.matcher(cleaned).matches()) {
+            return null;
+        }
+        return "http://" + cleaned;
     }
 
     private void openPreview() {

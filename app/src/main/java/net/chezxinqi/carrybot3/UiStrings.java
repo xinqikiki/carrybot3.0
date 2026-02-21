@@ -18,6 +18,7 @@ public final class UiStrings {
     public static final String KEY_DISCONNECT = "disconnect";
     public static final String KEY_RECONNECT = "reconnect";
     public static final String KEY_STOP = "stop";
+    public static final String KEY_STATUS_LABEL = "status_label";
     public static final String KEY_STATUS_RUNNING = "status_running";
     public static final String KEY_STATUS_CLOSED = "status_closed";
     public static final String KEY_STATUS_PAUSED = "status_paused";
@@ -33,6 +34,7 @@ public final class UiStrings {
     public static final String KEY_TOAST_NOT_CONNECTED = "toast_not_connected";
     public static final String KEY_TOAST_ALREADY_ADDED = "toast_already_added";
     public static final String KEY_TOAST_ENTER_IP = "toast_enter_ip";
+    public static final String KEY_TOAST_INVALID_IP = "toast_invalid_ip";
     public static final String KEY_TTS_ON = "tts_on";
     public static final String KEY_TTS_OFF = "tts_off";
     public static final String KEY_LANG_BUTTON = "lang_button";
@@ -102,6 +104,8 @@ public final class UiStrings {
                 return "RECONNECTER";
             case KEY_STOP:
                 return "ARRÊTER";
+            case KEY_STATUS_LABEL:
+                return "État du Robot";
             case KEY_STATUS_RUNNING:
                 return "En cours";
             case KEY_STATUS_CLOSED:
@@ -132,6 +136,8 @@ public final class UiStrings {
                 return "Déjà ajouté";
             case KEY_TOAST_ENTER_IP:
                 return "Entrez l'adresse IP";
+            case KEY_TOAST_INVALID_IP:
+                return "Adresse IP invalide";
             case KEY_TTS_ON:
                 return "TTS activé";
             case KEY_TTS_OFF:
@@ -177,6 +183,8 @@ public final class UiStrings {
                 return "RECONNECT";
             case KEY_STOP:
                 return "STOP";
+            case KEY_STATUS_LABEL:
+                return "Robot Status";
             case KEY_STATUS_RUNNING:
                 return "Running";
             case KEY_STATUS_CLOSED:
@@ -207,6 +215,8 @@ public final class UiStrings {
                 return "Already added";
             case KEY_TOAST_ENTER_IP:
                 return "Enter IP address";
+            case KEY_TOAST_INVALID_IP:
+                return "Invalid IP address";
             case KEY_TTS_ON:
                 return "TTS on";
             case KEY_TTS_OFF:
@@ -252,6 +262,8 @@ public final class UiStrings {
                 return "重新连接";
             case KEY_STOP:
                 return "停止";
+            case KEY_STATUS_LABEL:
+                return "机器人状态";
             case KEY_STATUS_RUNNING:
                 return "运行中";
             case KEY_STATUS_CLOSED:
@@ -282,6 +294,8 @@ public final class UiStrings {
                 return "已添加";
             case KEY_TOAST_ENTER_IP:
                 return "请输入IP地址";
+            case KEY_TOAST_INVALID_IP:
+                return "IP地址无效";
             case KEY_TTS_ON:
                 return "语音已开启";
             case KEY_TTS_OFF:

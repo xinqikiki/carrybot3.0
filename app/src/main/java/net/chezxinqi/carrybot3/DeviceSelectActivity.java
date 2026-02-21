@@ -1,6 +1,10 @@
 package net.chezxinqi.carrybot3;
 
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
+import android.net.Uri;
 import android.os.Bundle;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
@@ -19,10 +23,18 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import com.google.android.material.button.MaterialButton;
 
+import java.io.IOException;
+import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
+import java.net.Socket;
+import java.net.URL;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class DeviceSelectActivity extends AppCompatActivity {
 
+    private static final int[] CONTROL_PORT_CANDIDATES = new int[]{8090, 8080, 5000, 80};
     private TextView txtSelectTitle;
     private TextView txtTtsLabel;
     private TextView txtContrastLabel;
@@ -32,6 +44,7 @@ public class DeviceSelectActivity extends AppCompatActivity {
     private boolean isUpdatingToggles = false;
     private RecyclerView recyclerView;
     private DeviceAdapter adapter;
+    private final ExecutorService connectionExecutor = Executors.newSingleThreadExecutor();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,6 +59,8 @@ public class DeviceSelectActivity extends AppCompatActivity {
         btnLang = findViewById(R.id.btnLang);
         swTts = findViewById(R.id.swTts);
         swContrast = findViewById(R.id.swContrast);
+        styleSwitch(swTts);
+        styleSwitch(swContrast);
         recyclerView = findViewById(R.id.deviceList);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setHasFixedSize(true);
@@ -96,6 +111,24 @@ public class DeviceSelectActivity extends AppCompatActivity {
         );
     }
 
+    private void styleSwitch(SwitchCompat sw) {
+        sw.setTrackResource(R.drawable.switch_track);
+        sw.setThumbResource(R.drawable.switch_thumb);
+        sw.setTrackTintList(null);
+        sw.setThumbTintList(null);
+        sw.setSplitTrack(false);
+        int w = (int) dp(60);
+        int h = (int) dp(26);
+        sw.setSwitchMinWidth(w);
+        sw.setMinWidth(w);
+        sw.setMinimumWidth(w);
+        sw.setMinHeight(h);
+        sw.setMinimumHeight(h);
+        sw.setPadding(0, 0, 0, 0);
+        sw.setScaleX(1.0f);
+        sw.setScaleY(1.0f);
+    }
+
     private void openAdd() {
         TtsManager.speak(this, UiStrings.get(this, UiStrings.KEY_ADD));
         startActivity(new Intent(this, ConnectActivity.class));
@@ -106,6 +139,8 @@ public class DeviceSelectActivity extends AppCompatActivity {
         intent.putExtra("base_url", device.baseUrl);
         intent.putExtra("device_name", device.name);
         intent.putExtra("preview", false);
+        intent.putExtra("connected", false);
+        intent.putExtra("control_port", 8080);
         startActivity(intent);
     }
 
@@ -205,6 +240,103 @@ public class DeviceSelectActivity extends AppCompatActivity {
                 })
                 .setNegativeButton(UiStrings.get(this, UiStrings.KEY_NO), null)
                 .show();
+    }
+
+    private int detectControlPort(String baseUrl) {
+        ensureWifiRouting();
+        String host = extractHost(baseUrl);
+        if (host == null || host.trim().isEmpty()) {
+            return -1;
+        }
+        for (int port : CONTROL_PORT_CANDIDATES) {
+            if (isHttpReachable(buildUrl(baseUrl, port, "/health"))
+                    || isHttpReachable(buildUrl(baseUrl, port, "/status"))
+                    || isHttpReachable(buildUrl(baseUrl, port, "/ping"))
+                    || isTcpReachable(host, port)) {
+                return port;
+            }
+        }
+        return -1;
+    }
+
+    private String buildUrl(String base, int port, String path) {
+        Uri uri = Uri.parse(base);
+        String scheme = uri.getScheme() == null ? "http" : uri.getScheme();
+        String host = extractHost(base);
+        return scheme + "://" + host + ":" + port + path;
+    }
+
+    private String extractHost(String base) {
+        Uri uri = Uri.parse(base);
+        String host = uri.getHost();
+        if (host != null && !host.trim().isEmpty()) {
+            return host;
+        }
+        String raw = base.replaceFirst("^https?://", "");
+        int slash = raw.indexOf('/');
+        if (slash >= 0) {
+            raw = raw.substring(0, slash);
+        }
+        int colon = raw.indexOf(':');
+        return colon >= 0 ? raw.substring(0, colon) : raw;
+    }
+
+    private boolean isHttpReachable(String urlString) {
+        HttpURLConnection conn = null;
+        try {
+            URL url = new URL(urlString);
+            conn = (HttpURLConnection) url.openConnection();
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
+            conn.setRequestMethod("GET");
+            int code = conn.getResponseCode();
+            return (code >= 200 && code < 300) || code == 403 || code == 404 || code == 405;
+        } catch (IOException ignored) {
+            return false;
+        } finally {
+            if (conn != null) {
+                conn.disconnect();
+            }
+        }
+    }
+
+    private boolean isTcpReachable(String host, int port) {
+        Socket socket = new Socket();
+        try {
+            socket.connect(new InetSocketAddress(host, port), 4000);
+            return true;
+        } catch (IOException ignored) {
+            return false;
+        } finally {
+            try {
+                socket.close();
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    private void ensureWifiRouting() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            if (cm == null) {
+                return;
+            }
+            Network[] networks = cm.getAllNetworks();
+            for (Network network : networks) {
+                NetworkCapabilities caps = cm.getNetworkCapabilities(network);
+                if (caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                    cm.bindProcessToNetwork(network);
+                    return;
+                }
+            }
+        } catch (Exception ignored) {
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        connectionExecutor.shutdownNow();
     }
 
     private class DeviceAdapter extends RecyclerView.Adapter<DeviceAdapter.DeviceViewHolder> {

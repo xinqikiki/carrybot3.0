@@ -65,19 +65,21 @@
                 android:id="@+id/swTts"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:scaleX="1.0"
-                android:scaleY="1.0"
+                android:thumb="@drawable/switch_thumb"
+                android:track="@drawable/switch_track"
+                android:switchPadding="0dp"
+                android:thumbTextPadding="0dp"
                 android:splitTrack="false"
-                android:switchMinWidth="72dp"
-                app:thumbTint="@color/switch_thumb_tint"
-                app:trackTint="@color/switch_track_tint" />
+                android:switchMinWidth="60dp"
+                app:thumbTint="@null"
+                app:trackTint="@null" />
             </LinearLayout>
 
             <LinearLayout
                 android:id="@+id/contrastGroup"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="6dp"
+                android:layout_marginTop="12dp"
                 android:gravity="center_vertical"
                 android:orientation="horizontal">
 
@@ -95,12 +97,14 @@
                 android:id="@+id/swContrast"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:scaleX="1.0"
-                android:scaleY="1.0"
+                android:thumb="@drawable/switch_thumb"
+                android:track="@drawable/switch_track"
+                android:switchPadding="0dp"
+                android:thumbTextPadding="0dp"
                 android:splitTrack="false"
-                android:switchMinWidth="72dp"
-                app:thumbTint="@color/switch_thumb_tint"
-                app:trackTint="@color/switch_track_tint" />
+                android:switchMinWidth="60dp"
+                app:thumbTint="@null"
+                app:trackTint="@null" />
             </LinearLayout>
         </LinearLayout>
     </androidx.constraintlayout.widget.ConstraintLayout>
@@ -112,6 +116,7 @@
         android:layout_marginStart="20dp"
         android:layout_marginEnd="20dp"
         android:layout_marginTop="6dp"
+        android:layout_marginBottom="24dp"
         app:layout_constraintBottom_toTopOf="@+id/btnAddDevice"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
@@ -166,19 +171,16 @@
     </com.google.android.material.card.MaterialCardView>
     </androidx.constraintlayout.widget.ConstraintLayout>
 
-    <com.google.android.material.button.MaterialButton
+    <androidx.appcompat.widget.AppCompatImageButton
         android:id="@+id/btnAddDevice"
         android:layout_width="80dp"
         android:layout_height="80dp"
-        android:layout_marginBottom="20dp"
-        android:elevation="6dp"
-        android:fontFamily="sans-serif-black"
-        android:text="+"
-        android:textAllCaps="false"
-        android:textColor="@android:color/white"
-        android:textSize="36sp"
-        app:backgroundTint="#0E6F7F"
-        app:cornerRadius="40dp"
+        android:layout_marginBottom="44dp"
+        android:background="@drawable/bg_add_circle"
+        android:contentDescription="Ajouter"
+        android:padding="12dp"
+        android:scaleType="centerInside"
+        android:src="@drawable/ic_add_plus"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent" />

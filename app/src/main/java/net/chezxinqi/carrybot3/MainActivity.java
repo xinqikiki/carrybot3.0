@@ -4,6 +4,9 @@ import android.os.Bundle;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.net.Uri;
+import android.net.ConnectivityManager;
+import android.net.Network;
+import android.net.NetworkCapabilities;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
@@ -26,6 +29,8 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
+import java.net.InetSocketAddress;
+import java.net.Socket;
 import java.net.URL;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -37,11 +42,14 @@ public class MainActivity extends AppCompatActivity {
     private static final String EXTRA_BASE_URL = "base_url";
     private static final String EXTRA_PREVIEW = "preview";
     private static final String EXTRA_DEVICE_NAME = "device_name";
-    private static final String DEFAULT_BASE_URL = "http://192.168.4.1";
-    private static final int CONTROL_PORT = 8090;
+    private static final String EXTRA_CONTROL_PORT = "control_port";
+    private static final String DEFAULT_BASE_URL = "";
+    private static final int CONTROL_PORT = 8080;
+    private static final int[] CONTROL_PORT_CANDIDATES = new int[]{8080};
 
     private TextView txtTitle;
     private TextView txtStatus;
+    private TextView txtStatusLabel;
     private TextView txtBackLabel;
     private Button btnStop;
     private ImageButton btnUp;
@@ -65,6 +73,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean isDisconnectedState = false;
     private String baseUrl = DEFAULT_BASE_URL;
     private String currentStatusKey = UiStrings.KEY_STATUS_CLOSED;
+    private int activeControlPort = CONTROL_PORT;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -79,6 +88,7 @@ public class MainActivity extends AppCompatActivity {
         });
 
         txtStatus = findViewById(R.id.txtStatus);
+        txtStatusLabel = findViewById(R.id.txtStatusLabel);
         txtTitle = findViewById(R.id.txtTitle);
         btnStop = findViewById(R.id.btnStop);
         txtBackLabel = findViewById(R.id.txtBackLabel);
@@ -110,7 +120,18 @@ public class MainActivity extends AppCompatActivity {
         if (isPreview) {
             setPreviewMode();
         } else {
-            checkRobotOnline();
+            ensureWifiRouting();
+            boolean initialConnected = getIntent().getBooleanExtra(EXTRA_CONNECTED, false);
+            int incomingPort = getIntent().getIntExtra(EXTRA_CONTROL_PORT, CONTROL_PORT);
+            if (incomingPort > 0) {
+                activeControlPort = incomingPort;
+            }
+            if (initialConnected) {
+                setConnected(true);
+            } else {
+                setRobotOffline();
+            }
+            checkRobotOnline(false);
         }
 
         bindAction(btnUp, "AVANT");
@@ -121,12 +142,20 @@ public class MainActivity extends AppCompatActivity {
         bindAction(btnLiftDown, "DESCENDRE");
 
         btnStop.setOnClickListener(v -> {
-            String label = UiStrings.get(this,
-                    isDisconnectedState ? UiStrings.KEY_RECONNECT : UiStrings.KEY_DISCONNECT);
+            String label;
+            if (isDisconnectedState || (!isConnected && !isPreview)) {
+                label = UiStrings.get(this, UiStrings.KEY_RECONNECT);
+            } else {
+                label = UiStrings.get(this, UiStrings.KEY_DISCONNECT);
+            }
             TtsManager.speak(this, label);
             if (isDisconnectedState) {
                 startActivity(new android.content.Intent(this, DeviceSelectActivity.class));
                 finish();
+                return;
+            }
+            if (!isConnected && !isPreview) {
+                checkRobotOnline(true);
                 return;
             }
             logAction("DÉCONNECTER");
@@ -177,9 +206,9 @@ public class MainActivity extends AppCompatActivity {
         isConnected = false;
         isDisconnectedState = false;
         setControlsEnabled(false);
-        btnStop.setEnabled(false);
-        btnStop.setText(UiStrings.get(this, UiStrings.KEY_DISCONNECT));
-        btnStop.setBackgroundTintList(ColorStateList.valueOf(COLOR_GRAY));
+        btnStop.setEnabled(true);
+        btnStop.setText(UiStrings.get(this, UiStrings.KEY_RECONNECT));
+        btnStop.setBackgroundTintList(ColorStateList.valueOf(COLOR_GREEN));
         btnCenterStop.setBackgroundTintList(ColorStateList.valueOf(COLOR_GRAY));
         setStatusKey(UiStrings.KEY_STATUS_CLOSED, COLOR_RED);
     }
@@ -206,15 +235,21 @@ public class MainActivity extends AppCompatActivity {
         setStatusKey(UiStrings.KEY_STATUS_DISCONNECTED, COLOR_RED);
     }
 
-    private void checkRobotOnline() {
-        setRobotOffline();
+    private void checkRobotOnline(boolean showFailureToast) {
+        ensureWifiRouting();
+        if (showFailureToast) {
+            setRobotOffline();
+        }
         executor.execute(() -> {
             boolean ok = checkConnection(baseUrl);
             runOnUiThread(() -> {
                 if (ok) {
                     setConnected(true);
                 } else {
-                    Toast.makeText(this, UiStrings.get(this, UiStrings.KEY_TOAST_TURN_ON), Toast.LENGTH_SHORT).show();
+                    setRobotOffline();
+                    if (showFailureToast) {
+                        Toast.makeText(this, UiStrings.get(this, UiStrings.KEY_TOAST_TURN_ON), Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
         });
@@ -224,23 +259,56 @@ public class MainActivity extends AppCompatActivity {
         if (base == null || base.trim().isEmpty()) {
             return false;
         }
-        return httpGetHealth(buildControlUrl("/health"));
+        String host = extractHost(base);
+        if (host == null || host.trim().isEmpty()) {
+            Log.d(TAG, "Invalid base url: " + base);
+            return false;
+        }
+        for (int port : CONTROL_PORT_CANDIDATES) {
+            if (httpGetHealth(buildControlUrl(base, port, "/health"))) {
+                activeControlPort = port;
+                return true;
+            }
+            if (httpGetHealth(buildControlUrl(base, port, "/status"))) {
+                activeControlPort = port;
+                return true;
+            }
+            if (httpGetHealth(buildControlUrl(base, port, "/ping"))) {
+                activeControlPort = port;
+                return true;
+            }
+            if (isTcpReachable(host, port, 2000)) {
+                activeControlPort = port;
+                return true;
+            }
+        }
+        return false;
     }
 
     private String buildControlUrl(String path) {
-        Uri uri = Uri.parse(baseUrl);
+        return buildControlUrl(baseUrl, activeControlPort, path);
+    }
+
+    private String buildControlUrl(String base, int port, String path) {
+        Uri uri = Uri.parse(base);
         String scheme = uri.getScheme() == null ? "http" : uri.getScheme();
+        String host = extractHost(base);
+        return scheme + "://" + host + ":" + port + path;
+    }
+
+    private String extractHost(String base) {
+        Uri uri = Uri.parse(base);
         String host = uri.getHost();
-        if (host == null || host.trim().isEmpty()) {
-            String raw = baseUrl.replaceFirst("^https?://", "");
-            int slashIndex = raw.indexOf('/');
-            if (slashIndex >= 0) {
-                raw = raw.substring(0, slashIndex);
-            }
-            int colonIndex = raw.indexOf(':');
-            host = colonIndex >= 0 ? raw.substring(0, colonIndex) : raw;
+        if (host != null && !host.trim().isEmpty()) {
+            return host;
         }
-        return scheme + "://" + host + ":" + CONTROL_PORT + path;
+        String raw = base.replaceFirst("^https?://", "");
+        int slashIndex = raw.indexOf('/');
+        if (slashIndex >= 0) {
+            raw = raw.substring(0, slashIndex);
+        }
+        int colonIndex = raw.indexOf(':');
+        return colonIndex >= 0 ? raw.substring(0, colonIndex) : raw;
     }
 
     private void setControlsEnabled(boolean enabled) {
@@ -275,21 +343,45 @@ public class MainActivity extends AppCompatActivity {
             return;
         }
         logAction(command);
-        String driveAction = mapDriveAction(command);
         executor.execute(() -> {
-            boolean ok;
-            if ("STOP".equals(command)) {
-                ok = httpPostJson(buildControlUrl("/stop"), null);
-            } else if (driveAction != null) {
-                ok = httpPostJson(buildControlUrl("/drive"), buildDrivePayload(driveAction));
-            } else {
-                ok = false;
-            }
+            boolean ok = executeCommandRequest(command);
             if (!ok) {
-                runOnUiThread(() -> Toast.makeText(this,
-                        UiStrings.get(this, UiStrings.KEY_TOAST_SEND_ERROR), Toast.LENGTH_SHORT).show());
+                ok = tryFallbackPorts(command);
             }
+            final boolean commandOk = ok;
+            runOnUiThread(() -> {
+                if (commandOk) {
+                    if ("STOP".equals(command)) {
+                        setStatusKey(UiStrings.KEY_STATUS_PAUSED, COLOR_YELLOW);
+                    }
+                } else {
+                    Toast.makeText(this, UiStrings.get(this, UiStrings.KEY_TOAST_SEND_ERROR), Toast.LENGTH_SHORT).show();
+                }
+            });
         });
+    }
+
+    private boolean executeCommandRequest(String command) {
+        String driveAction = mapDriveAction(command);
+        if ("STOP".equals(command)) {
+            return httpPostJson(buildControlUrl("/stop"), null);
+        }
+        if (driveAction != null) {
+            return httpPostJson(buildControlUrl("/drive"), buildDrivePayload(driveAction));
+        }
+        return false;
+    }
+
+    private boolean tryFallbackPorts(String command) {
+        int originalPort = activeControlPort;
+        for (int port : CONTROL_PORT_CANDIDATES) {
+            activeControlPort = port;
+            if (executeCommandRequest(command)) {
+                return true;
+            }
+        }
+        activeControlPort = originalPort;
+        return false;
     }
 
     private String mapDriveAction(String command) {
@@ -329,22 +421,34 @@ public class MainActivity extends AppCompatActivity {
         try {
             URL url = new URL(urlString);
             conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(1500);
-            conn.setReadTimeout(1500);
+            conn.setConnectTimeout(4000);
+            conn.setReadTimeout(4000);
             conn.setRequestMethod("GET");
             int code = conn.getResponseCode();
             if (code < 200 || code >= 300) {
+                if (code == 403 || code == 404 || code == 405) {
+                    Log.d(TAG, "Endpoint not found/blocked but server reachable: " + urlString + " code=" + code);
+                    return true;
+                }
+                Log.d(TAG, "Health check non-2xx: " + urlString + " code=" + code);
                 return false;
             }
             String body = readBody(conn.getInputStream());
             if (body == null || body.trim().isEmpty()) {
-                return false;
+                Log.d(TAG, "Health check ok with empty body: " + urlString);
+                return true;
             }
-            JSONObject json = new JSONObject(body);
-            return json.optBoolean("ok", false);
+            try {
+                JSONObject json = new JSONObject(body);
+                if (json.has("ok") && !json.optBoolean("ok", false)) {
+                    Log.d(TAG, "Health endpoint reachable but ok=false: " + urlString);
+                }
+                return true;
+            } catch (JSONException ignored) {
+                return true;
+            }
         } catch (IOException e) {
-            return false;
-        } catch (JSONException e) {
+            Log.d(TAG, "Health check failed: " + urlString + " error=" + e.getMessage());
             return false;
         } finally {
             if (conn != null) {
@@ -353,13 +457,49 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    private boolean isTcpReachable(String host, int port, int timeoutMs) {
+        Socket socket = new Socket();
+        try {
+            socket.connect(new InetSocketAddress(host, port), timeoutMs);
+            return true;
+        } catch (IOException e) {
+            Log.d(TAG, "TCP check failed: " + host + ":" + port + " error=" + e.getMessage());
+            return false;
+        } finally {
+            try {
+                socket.close();
+            } catch (IOException ignored) {
+            }
+        }
+    }
+
+    private void ensureWifiRouting() {
+        try {
+            ConnectivityManager cm = (ConnectivityManager) getSystemService(CONNECTIVITY_SERVICE);
+            if (cm == null) {
+                return;
+            }
+            Network[] networks = cm.getAllNetworks();
+            for (Network network : networks) {
+                NetworkCapabilities caps = cm.getNetworkCapabilities(network);
+                if (caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                    cm.bindProcessToNetwork(network);
+                    Log.d(TAG, "Bound to Wi-Fi network for robot communication");
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            Log.d(TAG, "Failed to bind Wi-Fi route: " + e.getMessage());
+        }
+    }
+
     private boolean httpPostJson(String urlString, String jsonBody) {
         HttpURLConnection conn = null;
         try {
             URL url = new URL(urlString);
             conn = (HttpURLConnection) url.openConnection();
-            conn.setConnectTimeout(1500);
-            conn.setReadTimeout(1500);
+            conn.setConnectTimeout(4000);
+            conn.setReadTimeout(4000);
             conn.setRequestMethod("POST");
             conn.setDoOutput(true);
             conn.setRequestProperty("Content-Type", "application/json");
@@ -374,6 +514,7 @@ public class MainActivity extends AppCompatActivity {
             int code = conn.getResponseCode();
             return code >= 200 && code < 300;
         } catch (IOException e) {
+            Log.d(TAG, "POST failed: " + urlString + " error=" + e.getMessage());
             return false;
         } finally {
             if (conn != null) {
@@ -407,8 +548,11 @@ public class MainActivity extends AppCompatActivity {
 
     private void applyLanguage() {
         txtBackLabel.setText(UiStrings.get(this, UiStrings.KEY_BACK));
+        txtStatusLabel.setText(UiStrings.get(this, UiStrings.KEY_STATUS_LABEL));
         btnCenterStop.setText(UiStrings.get(this, UiStrings.KEY_STOP));
         if (isDisconnectedState) {
+            btnStop.setText(UiStrings.get(this, UiStrings.KEY_RECONNECT));
+        } else if (!isConnected && !isPreview) {
             btnStop.setText(UiStrings.get(this, UiStrings.KEY_RECONNECT));
         } else {
             btnStop.setText(UiStrings.get(this, UiStrings.KEY_DISCONNECT));

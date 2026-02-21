@@ -17,17 +17,27 @@
         android:focusable="true"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="4dp"
-        android:paddingEnd="8dp"
+        android:paddingStart="0dp"
+        android:paddingEnd="0dp"
         android:elevation="8dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
 
-        <ImageView
-            android:layout_width="24dp"
-            android:layout_height="24dp"
-            android:contentDescription="Retour"
-            android:src="@drawable/ic_back" />
+        <FrameLayout
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:background="@drawable/bg_back_circle_outline"
+            android:foreground="?attr/selectableItemBackgroundBorderless"
+            android:clickable="false"
+            android:focusable="false">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:layout_gravity="center"
+                android:contentDescription="Retour"
+                android:src="@drawable/ic_back" />
+        </FrameLayout>
 
         <TextView
             android:id="@+id/txtBackLabel"
