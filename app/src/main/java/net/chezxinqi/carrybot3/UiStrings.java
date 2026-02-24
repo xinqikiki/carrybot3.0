@@ -40,6 +40,7 @@ public final class UiStrings {
     public static final String KEY_LANG_BUTTON = "lang_button";
     public static final String KEY_TTS_BUTTON = "tts_button";
     public static final String KEY_CONTRAST_BUTTON = "contrast_button";
+    public static final String KEY_VIDEO_BUTTON = "video_button";
     public static final String KEY_CONTRAST_ON = "contrast_on";
     public static final String KEY_CONTRAST_OFF = "contrast_off";
     public static final String KEY_DELETE = "delete";
@@ -148,6 +149,8 @@ public final class UiStrings {
                 return "TTS";
             case KEY_CONTRAST_BUTTON:
                 return "Contraste";
+            case KEY_VIDEO_BUTTON:
+                return "Vidéo";
             case KEY_CONTRAST_ON:
                 return "Contraste activé";
             case KEY_CONTRAST_OFF:
@@ -227,6 +230,8 @@ public final class UiStrings {
                 return "TTS";
             case KEY_CONTRAST_BUTTON:
                 return "Contrast";
+            case KEY_VIDEO_BUTTON:
+                return "Video";
             case KEY_CONTRAST_ON:
                 return "Contrast on";
             case KEY_CONTRAST_OFF:
@@ -306,6 +311,8 @@ public final class UiStrings {
                 return "语音";
             case KEY_CONTRAST_BUTTON:
                 return "对比度";
+            case KEY_VIDEO_BUTTON:
+                return "视频";
             case KEY_CONTRAST_ON:
                 return "对比度已开启";
             case KEY_CONTRAST_OFF:

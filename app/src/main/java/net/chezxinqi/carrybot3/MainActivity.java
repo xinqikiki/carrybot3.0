@@ -1,6 +1,7 @@
 package net.chezxinqi.carrybot3;
 
 import android.os.Bundle;
+import android.os.Build;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
 import android.net.Uri;
@@ -8,17 +9,27 @@ import android.net.ConnectivityManager;
 import android.net.Network;
 import android.net.NetworkCapabilities;
 import android.util.Log;
+import android.util.TypedValue;
 import android.view.View;
+import android.view.ViewGroup;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.SwitchCompat;
+import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
+
+import com.google.android.material.card.MaterialCardView;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -51,6 +62,7 @@ public class MainActivity extends AppCompatActivity {
     private TextView txtStatus;
     private TextView txtStatusLabel;
     private TextView txtBackLabel;
+    private TextView txtVideoLabel;
     private Button btnStop;
     private ImageButton btnUp;
     private ImageButton btnDown;
@@ -60,6 +72,15 @@ public class MainActivity extends AppCompatActivity {
     private ImageButton btnLiftUp;
     private ImageButton btnLiftDown;
     private View viewStatusIndicator;
+    private LinearLayout container;
+    private MaterialCardView cardVideo;
+    private MaterialCardView cardStatus;
+    private MaterialCardView cardDirection;
+    private MaterialCardView cardStop;
+    private MaterialCardView cardLift;
+    private ConstraintLayout dpad;
+    private SwitchCompat swVideo;
+    private WebView webVideo;
 
     private static final int COLOR_RED = Color.parseColor("#C94A4A");
     private static final int COLOR_GREEN = Color.parseColor("#43A047");
@@ -71,6 +92,7 @@ public class MainActivity extends AppCompatActivity {
     private boolean isConnected = false;
     private boolean isPreview = false;
     private boolean isDisconnectedState = false;
+    private boolean isUpdatingVideoSwitch = false;
     private String baseUrl = DEFAULT_BASE_URL;
     private String currentStatusKey = UiStrings.KEY_STATUS_CLOSED;
     private int activeControlPort = CONTROL_PORT;
@@ -92,6 +114,16 @@ public class MainActivity extends AppCompatActivity {
         txtTitle = findViewById(R.id.txtTitle);
         btnStop = findViewById(R.id.btnStop);
         txtBackLabel = findViewById(R.id.txtBackLabel);
+        txtVideoLabel = findViewById(R.id.txtVideoLabel);
+        container = findViewById(R.id.container);
+        swVideo = findViewById(R.id.swVideo);
+        cardVideo = findViewById(R.id.cardVideo);
+        cardStatus = findViewById(R.id.cardStatus);
+        cardDirection = findViewById(R.id.cardDirection);
+        cardStop = findViewById(R.id.cardStop);
+        cardLift = findViewById(R.id.cardLift);
+        dpad = findViewById(R.id.dpad);
+        webVideo = findViewById(R.id.webVideo);
         findViewById(R.id.btnBack).setOnClickListener(v -> {
             TtsManager.speak(this, UiStrings.get(this, UiStrings.KEY_BACK));
             finish();
@@ -104,6 +136,16 @@ public class MainActivity extends AppCompatActivity {
         btnLiftUp = findViewById(R.id.btnLiftUp);
         btnLiftDown = findViewById(R.id.btnLiftDown);
         viewStatusIndicator = findViewById(R.id.viewStatusIndicator);
+        styleSwitch(swVideo);
+        setupVideoWebView();
+        swVideo.setOnCheckedChangeListener((buttonView, isChecked) -> {
+            if (isUpdatingVideoSwitch) {
+                return;
+            }
+            TtsManager.speak(this, UiStrings.get(this, UiStrings.KEY_VIDEO_BUTTON));
+            toggleVideo(isChecked);
+        });
+        applyControlLayout(false);
 
         isPreview = getIntent().getBooleanExtra(EXTRA_PREVIEW, false);
         String deviceName = getIntent().getStringExtra(EXTRA_DEVICE_NAME);
@@ -173,6 +215,82 @@ public class MainActivity extends AppCompatActivity {
         view.setOnClickListener(v -> sendCommand(action));
     }
 
+    private float dp(int value) {
+        return TypedValue.applyDimension(
+                TypedValue.COMPLEX_UNIT_DIP,
+                value,
+                getResources().getDisplayMetrics()
+        );
+    }
+
+    private void styleSwitch(SwitchCompat sw) {
+        if (sw == null) {
+            return;
+        }
+        sw.setTrackResource(R.drawable.switch_track);
+        sw.setThumbResource(R.drawable.switch_thumb);
+        sw.setTrackTintList(null);
+        sw.setThumbTintList(null);
+        sw.setSplitTrack(false);
+        int w = (int) dp(60);
+        int h = (int) dp(26);
+        sw.setSwitchMinWidth(w);
+        sw.setMinWidth(w);
+        sw.setMinimumWidth(w);
+        sw.setMinHeight(h);
+        sw.setMinimumHeight(h);
+        sw.setPadding(0, 0, 0, 0);
+    }
+
+    private void setupVideoWebView() {
+        if (webVideo == null) {
+            return;
+        }
+        WebSettings settings = webVideo.getSettings();
+        settings.setJavaScriptEnabled(false);
+        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            settings.setMixedContentMode(WebSettings.MIXED_CONTENT_COMPATIBILITY_MODE);
+        }
+        webVideo.setWebViewClient(new WebViewClient());
+    }
+
+    private void toggleVideo(boolean enabled) {
+        cardVideo.setVisibility(enabled ? View.VISIBLE : View.GONE);
+        applyControlLayout(enabled);
+        if (enabled) {
+            startVideoStream();
+        } else {
+            stopVideoStream();
+        }
+    }
+
+    private void startVideoStream() {
+        if (webVideo == null || baseUrl == null || baseUrl.trim().isEmpty()) {
+            return;
+        }
+        ensureWifiRouting();
+        webVideo.loadUrl(buildControlUrl(baseUrl, CONTROL_PORT, "/video_feed"));
+    }
+
+    private void stopVideoStream() {
+        if (webVideo == null) {
+            return;
+        }
+        webVideo.stopLoading();
+        webVideo.loadUrl("about:blank");
+    }
+
+    private void forceDisableVideo() {
+        if (swVideo != null && swVideo.isChecked()) {
+            isUpdatingVideoSwitch = true;
+            swVideo.setChecked(false);
+            isUpdatingVideoSwitch = false;
+        }
+        toggleVideo(false);
+    }
+
     private void logAction(String action) {
         Log.d(TAG, action);
     }
@@ -205,6 +323,7 @@ public class MainActivity extends AppCompatActivity {
     private void setRobotOffline() {
         isConnected = false;
         isDisconnectedState = false;
+        forceDisableVideo();
         setControlsEnabled(false);
         btnStop.setEnabled(true);
         btnStop.setText(UiStrings.get(this, UiStrings.KEY_RECONNECT));
@@ -227,6 +346,7 @@ public class MainActivity extends AppCompatActivity {
     private void setDisconnectedState() {
         isConnected = false;
         isDisconnectedState = true;
+        forceDisableVideo();
         setControlsEnabled(false);
         btnStop.setEnabled(true);
         btnStop.setText(UiStrings.get(this, UiStrings.KEY_RECONNECT));
@@ -536,6 +656,10 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        stopVideoStream();
+        if (webVideo != null) {
+            webVideo.destroy();
+        }
         executor.shutdownNow();
     }
 
@@ -544,11 +668,26 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         applyLanguage();
         applyContrast();
+        if (swVideo != null && swVideo.isChecked()) {
+            applyControlLayout(true);
+            startVideoStream();
+        } else {
+            applyControlLayout(false);
+        }
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        if (swVideo != null && swVideo.isChecked()) {
+            stopVideoStream();
+        }
     }
 
     private void applyLanguage() {
         txtBackLabel.setText(UiStrings.get(this, UiStrings.KEY_BACK));
         txtStatusLabel.setText(UiStrings.get(this, UiStrings.KEY_STATUS_LABEL));
+        txtVideoLabel.setText(UiStrings.get(this, UiStrings.KEY_VIDEO_BUTTON));
         btnCenterStop.setText(UiStrings.get(this, UiStrings.KEY_STOP));
         if (isDisconnectedState) {
             btnStop.setText(UiStrings.get(this, UiStrings.KEY_RECONNECT));
@@ -601,5 +740,92 @@ public class MainActivity extends AppCompatActivity {
             default:
                 return null;
         }
+    }
+
+    private void applyControlLayout(boolean compact) {
+        if (container == null) {
+            return;
+        }
+        int outerPadding = compact ? 9 : 12;
+        container.setPadding(toPx(outerPadding), 0, toPx(outerPadding), toPx(outerPadding));
+
+        applyCardStyle(cardVideo, compact, compact ? 3 : 0);
+        applyCardStyle(cardStatus, compact, compact ? 3 : 0);
+        applyCardStyle(cardDirection, compact, compact ? 3 : 0);
+        applyCardStyle(cardStop, compact, compact ? 3 : 0);
+        applyCardStyle(cardLift, compact, 0);
+
+        txtStatus.setTextSize(TypedValue.COMPLEX_UNIT_SP, compact ? 19f : 22f);
+        ViewGroup.LayoutParams dotLp = viewStatusIndicator.getLayoutParams();
+        int dotSize = toPx(compact ? 12 : 14);
+        dotLp.width = dotSize;
+        dotLp.height = dotSize;
+        viewStatusIndicator.setLayoutParams(dotLp);
+
+        ViewGroup.LayoutParams dpadLp = dpad.getLayoutParams();
+        dpadLp.height = toPx(compact ? 210 : 260);
+        dpad.setLayoutParams(dpadLp);
+
+        updateDpadButtonLayout(btnUp, compact ? 82 : 108, compact ? 12 : 16, "bottom");
+        updateDpadButtonLayout(btnDown, compact ? 82 : 108, compact ? 12 : 16, "top");
+        updateDpadButtonLayout(btnLeft, compact ? 82 : 108, compact ? 62 : 86, "end");
+        updateDpadButtonLayout(btnRight, compact ? 82 : 108, compact ? 62 : 86, "start");
+
+        ViewGroup.LayoutParams centerStopLp = btnCenterStop.getLayoutParams();
+        centerStopLp.height = toPx(compact ? 58 : 70);
+        btnCenterStop.setLayoutParams(centerStopLp);
+        btnCenterStop.setTextSize(TypedValue.COMPLEX_UNIT_SP, compact ? 18f : 20f);
+
+        ViewGroup.LayoutParams upLp = btnLiftUp.getLayoutParams();
+        upLp.width = toPx(compact ? 114 : 140);
+        upLp.height = toPx(compact ? 114 : 140);
+        btnLiftUp.setLayoutParams(upLp);
+
+        ViewGroup.LayoutParams downLp = btnLiftDown.getLayoutParams();
+        downLp.width = toPx(compact ? 114 : 140);
+        downLp.height = toPx(compact ? 114 : 140);
+        btnLiftDown.setLayoutParams(downLp);
+    }
+
+    private void applyCardStyle(MaterialCardView card, boolean compact, int marginBottomDp) {
+        if (card == null) {
+            return;
+        }
+        card.setUseCompatPadding(!compact);
+        card.setCardElevation(dp(compact ? 3 : 4));
+        ViewGroup.LayoutParams lp = card.getLayoutParams();
+        if (lp instanceof ViewGroup.MarginLayoutParams) {
+            ((ViewGroup.MarginLayoutParams) lp).bottomMargin = toPx(marginBottomDp);
+            card.setLayoutParams(lp);
+        }
+    }
+
+    private void updateDpadButtonLayout(ImageButton button, int sizeDp, int marginDp, String marginSide) {
+        if (button == null) {
+            return;
+        }
+        ViewGroup.LayoutParams lp = button.getLayoutParams();
+        if (!(lp instanceof ConstraintLayout.LayoutParams)) {
+            return;
+        }
+        ConstraintLayout.LayoutParams params = (ConstraintLayout.LayoutParams) lp;
+        int px = toPx(sizeDp);
+        params.width = px;
+        params.height = px;
+        int marginPx = toPx(marginDp);
+        if ("top".equals(marginSide)) {
+            params.topMargin = marginPx;
+        } else if ("bottom".equals(marginSide)) {
+            params.bottomMargin = marginPx;
+        } else if ("start".equals(marginSide)) {
+            params.setMarginStart(marginPx);
+        } else if ("end".equals(marginSide)) {
+            params.setMarginEnd(marginPx);
+        }
+        button.setLayoutParams(params);
+    }
+
+    private int toPx(int valueDp) {
+        return (int) dp(valueDp);
     }
 }

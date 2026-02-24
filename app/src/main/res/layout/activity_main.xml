@@ -54,17 +54,54 @@
 
     <TextView
         android:id="@+id/txtTitle"
-        android:layout_width="wrap_content"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_marginStart="8dp"
+        android:layout_marginEnd="8dp"
         android:fontFamily="sans-serif-medium"
         android:gravity="center"
         android:text="CarryBot"
         android:textColor="#002E3B"
         android:textSize="24sp"
         app:layout_constraintBottom_toBottomOf="@id/btnBack"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/videoGroup"
+        app:layout_constraintStart_toEndOf="@id/btnBack"
         app:layout_constraintTop_toTopOf="@id/btnBack" />
+
+    <LinearLayout
+        android:id="@+id/videoGroup"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="12dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal"
+        app:layout_constraintBottom_toBottomOf="@id/btnBack"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="@id/btnBack">
+
+        <TextView
+            android:id="@+id/txtVideoLabel"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginEnd="6dp"
+            android:fontFamily="sans-serif-medium"
+            android:text="Vidéo"
+            android:textColor="#0B4F5D"
+            android:textSize="16sp" />
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/swVideo"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:switchMinWidth="60dp"
+            android:switchPadding="0dp"
+            android:thumb="@drawable/switch_thumb"
+            android:thumbTextPadding="0dp"
+            android:track="@drawable/switch_track"
+            app:splitTrack="false"
+            app:thumbTint="@null"
+            app:trackTint="@null" />
+    </LinearLayout>
 
     <ScrollView
         android:id="@+id/scroll"
@@ -82,26 +119,52 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="vertical"
-            android:paddingStart="12dp"
+            android:paddingStart="8dp"
             android:paddingTop="0dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="12dp">
+            android:paddingEnd="8dp"
+            android:paddingBottom="8dp">
+
+            <com.google.android.material.card.MaterialCardView
+                android:id="@+id/cardVideo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
+                android:layout_marginTop="0dp"
+                android:visibility="gone"
+                app:cardBackgroundColor="#F8F7F6"
+                app:cardCornerRadius="18dp"
+                app:cardElevation="3dp"
+                app:cardUseCompatPadding="false">
+
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="220dp"
+                    android:padding="8dp">
+
+                    <WebView
+                        android:id="@+id/webVideo"
+                        android:layout_width="match_parent"
+                        android:layout_height="match_parent"
+                        android:background="#101010" />
+                </FrameLayout>
+            </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
                 android:id="@+id/cardStatus"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
                 android:layout_marginTop="0dp"
                 app:cardBackgroundColor="#F8F7F6"
                 app:cardCornerRadius="18dp"
-                app:cardElevation="4dp"
-                app:cardUseCompatPadding="true">
+                app:cardElevation="3dp"
+                app:cardUseCompatPadding="false">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="8dp">
+                    android:padding="6dp">
 
                     <TextView
                         android:id="@+id/txtStatusLabel"
@@ -115,7 +178,7 @@
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
+                        android:layout_marginTop="4dp"
                         android:gravity="center_vertical"
                         android:orientation="horizontal">
 
@@ -127,12 +190,12 @@
                         android:fontFamily="sans-serif-medium"
                         android:text="Fermé"
                         android:textColor="#002E3B"
-                        android:textSize="22sp" />
+                        android:textSize="18sp" />
 
                         <View
                             android:id="@+id/viewStatusIndicator"
-                            android:layout_width="14dp"
-                            android:layout_height="14dp"
+                            android:layout_width="11dp"
+                            android:layout_height="11dp"
                             android:background="@drawable/status_dot" />
                     </LinearLayout>
 
@@ -143,23 +206,24 @@
                 android:id="@+id/cardDirection"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
                 android:layout_marginTop="0dp"
                 app:cardBackgroundColor="#F8F7F6"
                 app:cardCornerRadius="18dp"
-                app:cardElevation="4dp"
-                app:cardUseCompatPadding="true">
+                app:cardElevation="3dp"
+                app:cardUseCompatPadding="false">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="12dp">
+                    android:padding="8dp">
 
                     <androidx.constraintlayout.widget.ConstraintLayout
                         android:id="@+id/dpad"
                         android:layout_width="match_parent"
-                        android:layout_height="260dp"
-                        android:layout_marginTop="4dp"
+                        android:layout_height="190dp"
+                        android:layout_marginTop="2dp"
                         android:layout_marginBottom="0dp">
 
                         <View
@@ -173,9 +237,9 @@
 
                         <ImageButton
                             android:id="@+id/btnUp"
-                            android:layout_width="108dp"
-                            android:layout_height="108dp"
-                            android:layout_marginBottom="16dp"
+                            android:layout_width="76dp"
+                            android:layout_height="76dp"
+                            android:layout_marginBottom="10dp"
                             android:background="@drawable/btn_neutral"
                             android:backgroundTint="@null"
                             android:contentDescription="Avant"
@@ -190,9 +254,9 @@
 
                         <ImageButton
                             android:id="@+id/btnDown"
-                            android:layout_width="108dp"
-                            android:layout_height="108dp"
-                            android:layout_marginTop="16dp"
+                            android:layout_width="76dp"
+                            android:layout_height="76dp"
+                            android:layout_marginTop="10dp"
                             android:background="@drawable/btn_neutral"
                             android:backgroundTint="@null"
                             android:contentDescription="Arrière"
@@ -207,9 +271,9 @@
 
                         <ImageButton
                             android:id="@+id/btnLeft"
-                            android:layout_width="108dp"
-                            android:layout_height="108dp"
-                            android:layout_marginEnd="86dp"
+                            android:layout_width="76dp"
+                            android:layout_height="76dp"
+                            android:layout_marginEnd="58dp"
                             android:background="@drawable/btn_neutral"
                             android:backgroundTint="@null"
                             android:contentDescription="Gauche"
@@ -224,9 +288,9 @@
 
                         <ImageButton
                             android:id="@+id/btnRight"
-                            android:layout_width="108dp"
-                            android:layout_height="108dp"
-                            android:layout_marginStart="86dp"
+                            android:layout_width="76dp"
+                            android:layout_height="76dp"
+                            android:layout_marginStart="58dp"
                             android:background="@drawable/btn_neutral"
                             android:backgroundTint="@null"
                             android:contentDescription="Droite"
@@ -246,22 +310,23 @@
                 android:id="@+id/cardStop"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:layout_marginBottom="4dp"
                 android:layout_marginTop="0dp"
                 app:cardBackgroundColor="#F8F7F6"
                 app:cardCornerRadius="14dp"
-                app:cardElevation="4dp"
-                app:cardUseCompatPadding="true">
+                app:cardElevation="3dp"
+                app:cardUseCompatPadding="false">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="12dp">
+                    android:padding="8dp">
 
                     <com.google.android.material.button.MaterialButton
                         android:id="@+id/btnCenterStop"
                         android:layout_width="match_parent"
-                        android:layout_height="70dp"
+                        android:layout_height="54dp"
                         android:layout_gravity="center_horizontal"
                         android:layout_marginTop="0dp"
                         android:elevation="2dp"
@@ -276,7 +341,7 @@
                         android:text="ARRÊTER"
                         android:textAllCaps="false"
                         android:textColor="@android:color/white"
-                        android:textSize="20sp"
+                        android:textSize="17sp"
                         app:backgroundTint="#C94A4A"
                         app:cornerRadius="14dp" />
                 </LinearLayout>
@@ -289,14 +354,14 @@
                 android:layout_marginTop="0dp"
                 app:cardBackgroundColor="#F8F7F6"
                 app:cardCornerRadius="18dp"
-                app:cardElevation="4dp"
-                app:cardUseCompatPadding="true">
+                app:cardElevation="3dp"
+                app:cardUseCompatPadding="false">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:orientation="vertical"
-                    android:padding="12dp">
+                    android:padding="8dp">
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -313,8 +378,8 @@
 
                             <ImageButton
                                 android:id="@+id/btnLiftUp"
-                                android:layout_width="140dp"
-                                android:layout_height="140dp"
+                                android:layout_width="106dp"
+                                android:layout_height="106dp"
                                 android:background="@drawable/btn_neutral"
                                 android:backgroundTint="@null"
                                 android:contentDescription="Monter"
@@ -331,8 +396,8 @@
 
                             <ImageButton
                                 android:id="@+id/btnLiftDown"
-                                android:layout_width="140dp"
-                                android:layout_height="140dp"
+                                android:layout_width="106dp"
+                                android:layout_height="106dp"
                                 android:background="@drawable/btn_neutral"
                                 android:backgroundTint="@null"
                                 android:contentDescription="Descendre"

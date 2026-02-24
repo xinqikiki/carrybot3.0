@@ -65,6 +65,12 @@ public class ConnectActivity extends AppCompatActivity {
             return;
         }
         TtsManager.speak(this, UiStrings.get(this, UiStrings.KEY_ADD));
+        DeviceStore.Device existing = DeviceStore.findByBaseUrl(this, baseUrl);
+        if (existing != null) {
+            String msg = UiStrings.get(this, UiStrings.KEY_TOAST_ALREADY_ADDED) + " : " + existing.name;
+            Toast.makeText(this, msg, Toast.LENGTH_SHORT).show();
+            return;
+        }
         String name = DeviceStore.suggestName(this);
         boolean added = DeviceStore.addDevice(this, name, baseUrl);
         if (!added) {

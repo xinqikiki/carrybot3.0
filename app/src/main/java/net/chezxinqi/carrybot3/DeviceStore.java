@@ -63,6 +63,19 @@ public final class DeviceStore {
         return true;
     }
 
+    public static Device findByBaseUrl(Context context, String baseUrl) {
+        if (baseUrl == null || baseUrl.trim().isEmpty()) {
+            return null;
+        }
+        List<Device> devices = load(context);
+        for (Device device : devices) {
+            if (device.baseUrl.equalsIgnoreCase(baseUrl)) {
+                return device;
+            }
+        }
+        return null;
+    }
+
     public static String suggestName(Context context) {
         List<Device> devices = load(context);
         int max = 0;
